@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Medical Transcription — Offline CPU</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <!-- Top Application Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-icon">🎙</div>
+      <div>
+        <h1 class="brand-title">Live Medical Transcription</h1>
+        <div class="brand-subtitle">
+          <span>Clinical Audio Capture & Real-time ASR</span>
+          <span class="offline-pill">100% Offline Local CPU</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-status">
+      <span id="connection-badge" class="badge badge-connecting">Connecting...</span>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- Error Banner (Microphone / Server Issues) -->
+    <div id="error-banner" class="error-banner"></div>
+
+    <!-- Recording Controls & Stats Card -->
+    <section class="controls-card">
+      <div class="controls-actions">
+        <button id="btn-start" class="btn btn-primary">
+          <span>🎤</span> Start Mic
+        </button>
+        <button id="btn-stop" class="btn btn-secondary" disabled>
+          <span>⏹</span> Stop
+        </button>
+        <button id="btn-save" class="btn btn-secondary">
+          <span>💾</span> Save Recording
+        </button>
+        <button id="btn-clear" class="btn btn-danger">
+          <span>🗑</span> Clear
+        </button>
+      </div>
+
+      <!-- Metrics and Audio Visualizer -->
+      <div class="metrics-group">
+        <div class="stat-item">
+          <span class="stat-label">Words</span>
+          <span id="stat-words" class="stat-value">0</span>
+        </div>
+
+        <div class="stat-item">
+          <span class="stat-label">Chunks</span>
+          <span id="stat-chunks" class="stat-value">0</span>
+        </div>
+
+        <!-- Audio Activity Level Bar -->
+        <div class="stat-item">
+          <span class="stat-label">Audio Level</span>
+          <div class="audio-meter-container">
+            <div id="audio-meter-bar" class="audio-meter-bar"></div>
+          </div>
+        </div>
+
+        <!-- VAD Speech Detection Indicator -->
+        <div class="stat-item">
+          <span class="stat-label">Voice Activity</span>
+          <span id="vad-badge" class="vad-indicator state-idle">VAD: Silence</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Two-Column Workspace -->
+    <section class="workspace-grid">
+
+      <!-- Column 1: Live Transcript -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <span class="live-dot"></span>
+            <h2 class="panel-title">Live Transcript</h2>
+          </div>
+          <div class="panel-actions">
+            <label>
+              <input type="checkbox" id="toggle-autoscroll" checked /> Auto-scroll
+            </label>
+            <button id="btn-copy" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <!-- Transcript Content -->
+        <div id="transcript-container" class="panel-body">
+          <div class="empty-state">
+            <div class="empty-icon">🎙</div>
+            <p class="empty-title">Ready for Consultation Audio</p>
+            <p class="empty-subtitle">Click <strong>Start Mic</strong> and begin speaking. Real-time transcription will appear here locally on CPU.</p>
+          </div>
+        </div>
+
+        <!-- Transcript Footer Status -->
+        <div class="panel-footer">
+          <span id="status-badge">Status: Ready</span>
+          <span>Engine: Faster-Whisper (CPU INT8) + Silero VAD</span>
+        </div>
+      </div>
+
+      <!-- Column 2: AI Medical Summary Placeholder (Future LLM Stage) -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2 class="panel-title">AI Medical Summary</h2>
+          </div>
+          <span class="badge" style="background-color: #f1f5f9; color: #64748b;">Future LLM Stage</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="placeholder-banner">
+            <div class="placeholder-icon">ℹ️</div>
+            <div>
+              <div class="placeholder-heading">Reserved for Future Clinical LLM Stage</div>
+              <div class="placeholder-desc">
+                This stage will extract structured clinical documentation (Chief Complaint, HPI, Assessment, Plan) from the live transcript. It is currently intentionally inactive per assignment scope.
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-sections-placeholder">
+            <div class="summary-box">
+              <div class="summary-box-title">Chief Complaint</div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+
+            <div class="summary-box">
+              <div class="summary-box-title">History of Present Illness (HPI)</div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+
+            <div class="summary-box">
+              <div class="summary-box-title">Clinical Assessment & Plan</div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <span>Scope: Audio → VAD → ASR → Live Transcript</span>
+          <span>LLM Extraction: Out of scope</span>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modular Scripts -->
+  <script src="/js/state.js"></script>
+  <script src="/js/websocket.js"></script>
+  <script src="/js/audio.js"></script>
+  <script src="/js/transcript.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
