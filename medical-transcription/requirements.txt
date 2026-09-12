@@ -5,11 +5,15 @@ websockets>=12.0
 aiofiles>=23.2.1
 python-multipart>=0.0.6
 
-# Deepgram Cloud STT
+# Deepgram Cloud Streaming STT
 deepgram-sdk>=3.0.0
 
-# Environment variable management
+# Groq Cloud LLM (Clinical Information Extraction)
+groq>=0.9.0
+
+# Environment Variable Configuration
 python-dotenv>=1.0.0
 
-# Audio & Numeric Utilities
+# Data Validation & Numeric Utilities
+pydantic>=2.0.0
 numpy>=1.24.0

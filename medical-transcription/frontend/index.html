@@ -3,165 +3,260 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Medical Transcription — Offline CPU</title>
+  <title>Medical Consultation — Live Ambient Transcription & Clinical EHR</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
 
-  <!-- Top Application Header -->
+  <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="brand-container">
-      <div class="brand-icon">🎙</div>
+      <div class="brand-icon">🩺</div>
       <div>
-        <h1 class="brand-title">Live Medical Transcription</h1>
+        <h1 class="brand-title">Clinical Ambient AI Scribe</h1>
         <div class="brand-subtitle">
-          <span>Clinical Audio Capture & Real-time ASR</span>
-          <span class="offline-pill">100% Offline Local CPU</span>
+          <span>Real-time Live Audio Transcription & Structured Medical Record</span>
         </div>
       </div>
     </div>
-    <div class="header-status">
+    <div class="header-actions">
+      <!-- Quick Dropdown -->
+      <select id="select-past-sessions" class="select-past-sessions" title="Quick load past consultation">
+        <option value="">📁 Past Consultations (0)</option>
+      </select>
+      <!-- History Drawer Trigger Button -->
+      <button id="btn-open-history" class="btn-history-pill">
+        <span>🕒 History</span>
+      </button>
       <span id="connection-badge" class="badge badge-connecting">Connecting...</span>
     </div>
   </header>
 
-  <!-- Main Content Container -->
+  <!-- Error Banner -->
+  <div id="error-banner" class="error-banner" style="display: none;"></div>
+
+  <!-- Main Container -->
   <main class="main-container">
+    <div class="two-column-workspace">
 
-    <!-- Error Banner (Microphone / Server Issues) -->
-    <div id="error-banner" class="error-banner"></div>
+      <!-- ================================================================ -->
+      <!-- LEFT COLUMN: Live Medical Transcription                          -->
+      <!-- ================================================================ -->
+      <section class="panel-card left-panel">
+        
+        <!-- Panel Title -->
+        <div class="panel-header-simple">
+          <h2 class="panel-title-text"><span class="title-icon">🎙️</span> Live Medical Transcription</h2>
+        </div>
 
-    <!-- Recording Controls & Stats Card -->
-    <section class="controls-card">
-      <div class="controls-actions">
-        <button id="btn-start" class="btn btn-primary">
-          <span>🎤</span> Start Mic
+        <!-- Action Buttons Row -->
+        <div class="controls-row">
+          <button id="btn-start" class="pill-btn pill-purple">
+            <span class="btn-icon">🎙️</span> Start Mic
+          </button>
+          <button id="btn-stop" class="pill-btn pill-white-red" disabled>
+            <span class="btn-icon">⏹</span> Stop
+          </button>
+          <button id="btn-clear" class="pill-btn pill-white-gray">
+            <span class="btn-icon">🗑</span> Clear
+          </button>
+          <button id="btn-save" class="pill-btn pill-white-green">
+            <span class="btn-icon">📥</span> Save Recording
+          </button>
+        </div>
+
+        <!-- Stats Badges Row -->
+        <div class="stats-row">
+          <div class="stat-badge">
+            <span class="stat-icon">📄</span> WORDS: <span id="stat-words">0</span>
+          </div>
+          <div class="stat-badge">
+            <span class="stat-icon">🔄</span> CHUNKS: <span id="stat-chunks">0</span>
+          </div>
+          <span id="vad-badge" class="vad-badge state-idle">VAD: Silence</span>
+        </div>
+
+        <!-- Top Box: Live Stream / Current Recognized Chunk -->
+        <div class="chunk-display-box" id="chunk-display-box">
+          <div id="chunk-placeholder" class="chunk-placeholder">Live speech chunk will appear here as you speak...</div>
+          <div id="live-interim-content" class="live-interim-content" style="display: none;">
+            <span class="pulse-dot"></span>
+            <span id="interim-text" class="interim-text"></span>
+          </div>
+        </div>
+
+        <!-- Bottom Box: Full Cumulative Transcript Container -->
+        <div class="full-transcript-box" id="transcript-container">
+          <div id="empty-transcript" class="empty-transcript-message">
+            <span class="wand-icon">🪄</span> Ready — click Start Mic and speak naturally. VAD will auto-chunk your speech.
+          </div>
+          <div id="final-transcript-stream" class="final-stream"></div>
+        </div>
+
+        <!-- Left Panel Action Button -->
+        <button id="btn-process-ai" class="btn-purple-action">
+          <span class="action-icon">⚡</span> Process Transcript with AI
         </button>
-        <button id="btn-stop" class="btn btn-secondary" disabled>
-          <span>⏹</span> Stop
+
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- RIGHT COLUMN: AI Medical Summary                                 -->
+      <!-- ================================================================ -->
+      <section class="panel-card right-panel">
+        
+        <!-- Panel Header -->
+        <div class="panel-header-split">
+          <h2 class="panel-title-text"><span class="title-icon">⏳</span> AI Medical Summary</h2>
+          <button id="btn-clear-summary" class="pill-btn-sm pill-white-gray">✕ Clear</button>
+        </div>
+
+        <!-- Demographics Row -->
+        <div class="patient-demographics-container">
+          <div class="patient-name-row">
+            Patient Name: <strong id="field-patient-name">Dr Tushar</strong>
+          </div>
+          <div class="patient-details-row">
+            Age: <span id="field-patient-age">30</span> Gender: <span id="field-patient-gender">Male</span>
+          </div>
+        </div>
+
+        <!-- AI Processing Feedback State (Overlay / Progress Bar) -->
+        <div id="ai-processing-feedback" class="ai-processing-feedback" style="display: none;">
+          <div class="ai-spinner-ring"></div>
+          <div class="ai-processing-text" id="ai-feedback-text">⚡ Extracting clinical EHR fields with Groq (openai/gpt-oss-20b)...</div>
+        </div>
+
+        <!-- Clinical Fields Container (Scrollable) -->
+        <div class="clinical-sections-wrapper" id="clinical-sections-wrapper">
+          
+          <!-- 1. CLINICAL SUMMARY -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">📋</span>
+              <span class="sec-title">CLINICAL SUMMARY</span>
+              <span class="sec-rule"></span>
+            </div>
+            <textarea id="field-clinical-summary" class="clinical-summary-textarea" placeholder="AI-generated clinical summary will appear here..." readonly></textarea>
+          </div>
+
+          <!-- 2. CHIEF COMPLAINTS -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">💬</span>
+              <span class="sec-title">CHIEF COMPLAINTS</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-chief-complaint" class="section-output-content text-placeholder">No complaints extracted yet</div>
+          </div>
+
+          <!-- 3. SYMPTOMS -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">🩺</span>
+              <span class="sec-title">SYMPTOMS</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-symptoms" class="section-output-content text-placeholder">No symptoms extracted yet</div>
+          </div>
+
+          <!-- 4. CLINICAL IMPRESSION -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">🩺</span>
+              <span class="sec-title">CLINICAL IMPRESSION</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-clinical-impression" class="section-output-content text-placeholder">No diagnosis inferred</div>
+          </div>
+
+          <!-- 5. MEDICATIONS -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">💊</span>
+              <span class="sec-title">MEDICATIONS</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-medications" class="section-output-content text-placeholder">No medications extracted yet</div>
+          </div>
+
+          <!-- 6. EXAMINATIONS & TESTS -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">🔬</span>
+              <span class="sec-title">EXAMINATIONS & TESTS</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-examinations" class="section-output-content text-placeholder">No examinations extracted yet</div>
+          </div>
+
+          <!-- 7. ALLERGIES -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">⚠️</span>
+              <span class="sec-title">ALLERGIES</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-allergies" class="section-output-content text-placeholder">No allergies extracted yet</div>
+          </div>
+
+          <!-- 8. PAST MEDICAL HISTORY -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">🕒</span>
+              <span class="sec-title">PAST MEDICAL HISTORY</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-past-medical" class="section-output-content text-placeholder">No past medical history extracted</div>
+          </div>
+
+          <!-- 9. HISTORY & FOLLOW-UP -->
+          <div class="clinical-section-block">
+            <div class="section-divider-heading">
+              <span class="sec-icon">📅</span>
+              <span class="sec-title">HISTORY & FOLLOW-UP</span>
+              <span class="sec-rule"></span>
+            </div>
+            <div id="field-history-followup" class="section-output-content text-placeholder">No follow-up extracted yet</div>
+          </div>
+
+        </div>
+
+        <!-- Right Panel Action Button -->
+        <button id="btn-copy-prescription" class="btn-purple-action">
+          Copy to Prescription
         </button>
-        <button id="btn-save" class="btn btn-secondary">
-          <span>💾</span> Save Recording
-        </button>
-        <button id="btn-clear" class="btn btn-danger">
-          <span>🗑</span> Clear
-        </button>
-      </div>
 
-      <!-- Metrics and Audio Visualizer -->
-      <div class="metrics-group">
-        <div class="stat-item">
-          <span class="stat-label">Words</span>
-          <span id="stat-words" class="stat-value">0</span>
-        </div>
+      </section>
 
-        <div class="stat-item">
-          <span class="stat-label">Chunks</span>
-          <span id="stat-chunks" class="stat-value">0</span>
-        </div>
-
-        <!-- Audio Activity Level Bar -->
-        <div class="stat-item">
-          <span class="stat-label">Audio Level</span>
-          <div class="audio-meter-container">
-            <div id="audio-meter-bar" class="audio-meter-bar"></div>
-          </div>
-        </div>
-
-        <!-- VAD Speech Detection Indicator -->
-        <div class="stat-item">
-          <span class="stat-label">Voice Activity</span>
-          <span id="vad-badge" class="vad-indicator state-idle">VAD: Silence</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Two-Column Workspace -->
-    <section class="workspace-grid">
-
-      <!-- Column 1: Live Transcript -->
-      <div class="panel-card">
-        <div class="panel-header">
-          <div class="panel-title-area">
-            <span class="live-dot"></span>
-            <h2 class="panel-title">Live Transcript</h2>
-          </div>
-          <div class="panel-actions">
-            <label>
-              <input type="checkbox" id="toggle-autoscroll" checked /> Auto-scroll
-            </label>
-            <button id="btn-copy" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
-              Copy
-            </button>
-          </div>
-        </div>
-
-        <!-- Transcript Content -->
-        <div id="transcript-container" class="panel-body">
-          <div class="empty-state">
-            <div class="empty-icon">🎙</div>
-            <p class="empty-title">Ready for Consultation Audio</p>
-            <p class="empty-subtitle">Click <strong>Start Mic</strong> and begin speaking. Real-time transcription will appear here locally on CPU.</p>
-          </div>
-        </div>
-
-        <!-- Transcript Footer Status -->
-        <div class="panel-footer">
-          <span id="status-badge">Status: Ready</span>
-          <span>Engine: Faster-Whisper (CPU INT8) + Silero VAD</span>
-        </div>
-      </div>
-
-      <!-- Column 2: AI Medical Summary Placeholder (Future LLM Stage) -->
-      <div class="panel-card">
-        <div class="panel-header">
-          <div class="panel-title-area">
-            <h2 class="panel-title">AI Medical Summary</h2>
-          </div>
-          <span class="badge" style="background-color: #f1f5f9; color: #64748b;">Future LLM Stage</span>
-        </div>
-
-        <div class="panel-body">
-          <div class="placeholder-banner">
-            <div class="placeholder-icon">ℹ️</div>
-            <div>
-              <div class="placeholder-heading">Reserved for Future Clinical LLM Stage</div>
-              <div class="placeholder-desc">
-                This stage will extract structured clinical documentation (Chief Complaint, HPI, Assessment, Plan) from the live transcript. It is currently intentionally inactive per assignment scope.
-              </div>
-            </div>
-          </div>
-
-          <div class="summary-sections-placeholder">
-            <div class="summary-box">
-              <div class="summary-box-title">Chief Complaint</div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line short"></div>
-            </div>
-
-            <div class="summary-box">
-              <div class="summary-box-title">History of Present Illness (HPI)</div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line short"></div>
-            </div>
-
-            <div class="summary-box">
-              <div class="summary-box-title">Clinical Assessment & Plan</div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line short"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel-footer">
-          <span>Scope: Audio → VAD → ASR → Live Transcript</span>
-          <span>LLM Extraction: Out of scope</span>
-        </div>
-      </div>
-
-    </section>
+    </div>
   </main>
+
+  <!-- Floating Chat Assistant Button (Matching assignment screenshot) -->
+  <div class="floating-chat-bubble" id="floating-chat-btn" title="Clinical Scribe AI Assistant">
+    <span class="chat-icon">💬</span>
+  </div>
+
+  <!-- Slide-out Past Consultations Drawer -->
+  <div id="past-drawer-overlay" class="drawer-overlay" style="display: none;"></div>
+  <aside id="past-drawer" class="past-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span class="drawer-icon">📁</span>
+        <h3>Past Consultations History</h3>
+      </div>
+      <button id="btn-close-drawer" class="btn-close-drawer" title="Close history">✕</button>
+    </div>
+    <div class="drawer-meta">
+      Loaded from local SQLite database (<code>consultations.db</code>)
+    </div>
+    <div id="past-drawer-list" class="past-drawer-list">
+      <div class="drawer-loading">Loading consultation records...</div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification Alert -->
+  <div id="toast-notification" class="toast-notification"></div>
 
   <!-- Modular Scripts -->
   <script src="/js/state.js"></script>

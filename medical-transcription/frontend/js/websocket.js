@@ -71,13 +71,17 @@ class WebSocketClient {
     try {
       const msg = JSON.parse(dataStr);
 
-      if (msg.type === 'transcript') {
+      if (msg.type === 'partial') {
+        // Google Live Transcribe style live interim speech
+        if (window.transcriptController) {
+          window.transcriptController.updateInterim(msg.text);
+        }
+      } else if (msg.type === 'transcript') {
         const state = window.appState.getState();
         const updatedSegments = [...state.segments, {
           id: msg.segment_id,
           text: msg.text,
           duration: msg.duration,
-          inference_time: msg.inference_time,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         }];
 
@@ -88,6 +92,10 @@ class WebSocketClient {
           wordCount: msg.words,
           processingStatus: 'listening',
         });
+
+        if (window.transcriptController) {
+          window.transcriptController.commitFinal(msg);
+        }
       } else if (msg.type === 'status') {
         window.appState.setState({
           processingStatus: msg.status,
@@ -98,6 +106,14 @@ class WebSocketClient {
           vadStatus: msg.state,
           vadProb: msg.prob,
         });
+      } else if (msg.type === 'extraction_loading') {
+        if (window.transcriptController) {
+          window.transcriptController.showLoading(msg.message);
+        }
+      } else if (msg.type === 'clinical_summary') {
+        if (window.transcriptController) {
+          window.transcriptController.renderClinicalSummary(msg.data, msg.session_id);
+        }
       } else if (msg.type === 'session_end') {
         console.log('[WS] Session completed:', msg.data);
         window.appState.setState({
@@ -107,6 +123,9 @@ class WebSocketClient {
         });
       } else if (msg.type === 'session_cleared') {
         window.appState.resetTranscript();
+        if (window.transcriptController) {
+          window.transcriptController.clear();
+        }
       } else if (msg.type === 'error') {
         console.error('[WS] Server error:', msg.message);
         window.appState.setState({ error: msg.message });

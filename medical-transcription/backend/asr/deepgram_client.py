@@ -91,10 +91,13 @@ class DeepgramStreamingClient:
         """
         if self._ws and self._connected:
             try:
-                await self._ws.send(json.dumps({"type": "CloseStream"}))
+                await asyncio.wait_for(
+                    self._ws.send(json.dumps({"type": "CloseStream"})),
+                    timeout=1.0,
+                )
                 logger.info("[DEEPGRAM] CloseStream sent.")
-            except Exception as e:
-                logger.warning("[DEEPGRAM] Error sending CloseStream: %s", e)
+            except Exception:
+                pass
 
     async def listen(self) -> AsyncGenerator[dict, None]:
         """
@@ -186,7 +189,7 @@ class DeepgramStreamingClient:
         self._connected = False
         if self._ws:
             try:
-                await self._ws.close()
+                await asyncio.wait_for(self._ws.close(), timeout=1.0)
             except Exception:
                 pass
             self._ws = None

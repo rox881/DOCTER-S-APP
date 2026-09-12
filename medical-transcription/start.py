@@ -98,11 +98,13 @@ def start_server(host: str = "127.0.0.1", port: int = 8000, no_browser: bool = F
 
     url = f"http://{host}:{port}"
     print("\n" + "=" * 65)
-    print(" Medical Consultation — Live Transcription (Deepgram Cloud)")
+    print(" Medical Consultation — Live Ambient AI Scribe & Clinical EHR")
     print("=" * 65)
     print(f" Server running at : {url}")
     print(f" STT Engine        : Deepgram Cloud ({os.getenv('DEEPGRAM_MODEL', 'nova-2-medical')})")
-    print(f" Mode              : Real-time streaming WebSocket")
+    print(f" Clinical LLM      : Groq LPU ({os.getenv('GROQ_MODEL', 'openai/gpt-oss-20b')})")
+    print(f" Database          : SQLite (consultations.db)")
+    print(f" Mode              : Google Live Transcribe + Structured EHR")
     print(" Press CTRL+C to stop.")
     print("=" * 65 + "\n")
 

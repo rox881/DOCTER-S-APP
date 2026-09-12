@@ -9,16 +9,12 @@ class UIController {
     this.stopBtn = null;
     this.saveBtn = null;
     this.clearBtn = null;
-    this.copyBtn = null;
-    this.autoScrollToggle = null;
 
     this.connectionBadge = null;
     this.vadBadge = null;
-    this.statusBadge = null;
 
     this.wordCountEl = null;
     this.chunkCountEl = null;
-    this.audioMeterBar = null;
     this.errorBanner = null;
   }
 
@@ -27,21 +23,17 @@ class UIController {
     this.stopBtn = document.getElementById('btn-stop');
     this.saveBtn = document.getElementById('btn-save');
     this.clearBtn = document.getElementById('btn-clear');
-    this.copyBtn = document.getElementById('btn-copy');
-    this.autoScrollToggle = document.getElementById('toggle-autoscroll');
 
     this.connectionBadge = document.getElementById('connection-badge');
     this.vadBadge = document.getElementById('vad-badge');
-    this.statusBadge = document.getElementById('status-badge');
 
     this.wordCountEl = document.getElementById('stat-words');
     this.chunkCountEl = document.getElementById('stat-chunks');
-    this.audioMeterBar = document.getElementById('audio-meter-bar');
     this.errorBanner = document.getElementById('error-banner');
 
     this.bindEvents();
 
-    // Subscribe to state changes
+    // Subscribe to central AppState
     window.appState.subscribe((state, prevState) => this.render(state, prevState));
   }
 
@@ -60,27 +52,16 @@ class UIController {
 
     if (this.saveBtn) {
       this.saveBtn.addEventListener('click', () => {
-        window.transcriptController.downloadTranscript();
+        window.transcriptController.saveRecording();
       });
     }
 
     if (this.clearBtn) {
       this.clearBtn.addEventListener('click', () => {
-        if (confirm('Clear entire transcript session?')) {
+        if (confirm('Clear entire consultation session?')) {
+          window.transcriptController.clear();
           window.wsClient.clearSession();
         }
-      });
-    }
-
-    if (this.copyBtn) {
-      this.copyBtn.addEventListener('click', () => {
-        window.transcriptController.copyToClipboard();
-      });
-    }
-
-    if (this.autoScrollToggle) {
-      this.autoScrollToggle.addEventListener('change', (e) => {
-        window.transcriptController.autoScroll = e.target.checked;
       });
     }
   }
@@ -102,7 +83,7 @@ class UIController {
     if (this.connectionBadge) {
       this.connectionBadge.className = `badge badge-${state.connectionStatus}`;
       const statusLabels = {
-        connected: 'Local CPU Connected',
+        connected: 'Deepgram Connected',
         connecting: 'Connecting...',
         disconnected: 'Disconnected',
       };
@@ -111,7 +92,7 @@ class UIController {
 
     // 3. VAD Badge
     if (this.vadBadge) {
-      this.vadBadge.className = `vad-indicator state-${state.vadStatus}`;
+      this.vadBadge.className = `vad-badge state-${state.vadStatus}`;
       const vadLabels = {
         idle: 'VAD: Silence',
         detecting: 'VAD: Detecting...',
@@ -121,37 +102,15 @@ class UIController {
       this.vadBadge.textContent = vadLabels[state.vadStatus] || `VAD: ${state.vadStatus}`;
     }
 
-    // 4. Processing Status
-    if (this.statusBadge) {
-      const statusLabels = {
-        ready: 'Status: Ready',
-        listening: 'Status: Listening (VAD Active)',
-        transcribing: 'Status: Transcribing (Whisper CPU)...',
-        stopped: 'Status: Stopped',
-      };
-      this.statusBadge.textContent = statusLabels[state.processingStatus] || `Status: ${state.processingStatus}`;
-    }
-
-    // 5. Counters
-    if (this.wordCountEl) {
+    // 4. Counters
+    if (this.wordCountEl && state.wordCount !== undefined) {
       this.wordCountEl.textContent = state.wordCount;
     }
-    if (this.chunkCountEl) {
+    if (this.chunkCountEl && state.segmentCount !== undefined) {
       this.chunkCountEl.textContent = state.segmentCount;
     }
 
-    // 6. Audio Meter Bar
-    if (this.audioMeterBar) {
-      const percent = Math.min(100, Math.round(state.audioLevel * 100));
-      this.audioMeterBar.style.width = `${percent}%`;
-    }
-
-    // 7. Render Segments if changed
-    if (state.segments !== prevState.segments) {
-      window.transcriptController.renderSegments(state.segments);
-    }
-
-    // 8. Error banner
+    // 5. Error Banner
     if (this.errorBanner) {
       if (state.error) {
         this.errorBanner.style.display = 'block';
@@ -164,3 +123,4 @@ class UIController {
 }
 
 window.uiController = new UIController();
+

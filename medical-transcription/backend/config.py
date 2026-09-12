@@ -29,6 +29,13 @@ DEEPGRAM_ENDPOINTING_MS = int(os.getenv("DEEPGRAM_ENDPOINTING_MS", "600"))
 # Time (ms) after last word before UtteranceEnd event fires
 DEEPGRAM_UTTERANCE_END_MS = int(os.getenv("DEEPGRAM_UTTERANCE_END_MS", "1000"))
 
+# ─── Groq Cloud LLM Configuration ─────────────────────────────────────────────
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+
+# ─── Database Configuration ───────────────────────────────────────────────────
+DB_PATH = BASE_DIR / "consultations.db"
+
 # ─── Server Configuration ─────────────────────────────────────────────────────
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
