@@ -23,7 +23,7 @@ LANGUAGE = os.getenv("LANGUAGE", "en")
 
 # ─── Deepgram Cloud STT Configuration ────────────────────────────────────────
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
-DEEPGRAM_MODEL = os.getenv("DEEPGRAM_MODEL", "nova-3-medical")
+DEEPGRAM_MODEL = os.getenv("DEEPGRAM_MODEL", "nova-2-medical")
 # Trailing silence (ms) before Deepgram finalizes an utterance
 DEEPGRAM_ENDPOINTING_MS = int(os.getenv("DEEPGRAM_ENDPOINTING_MS", "600"))
 # Time (ms) after last word before UtteranceEnd event fires

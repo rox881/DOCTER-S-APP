@@ -17,8 +17,8 @@ from .. import config
 
 logger = logging.getLogger(__name__)
 
-# Deepgram streaming endpoint with parameters
-_DEEPGRAM_WS_BASE = "wss://api.deepgram.com/v2/listen"
+# Deepgram streaming STT endpoint
+_DEEPGRAM_WS_BASE = "wss://api.deepgram.com/v1/listen"
 
 
 def _build_deepgram_url() -> str:

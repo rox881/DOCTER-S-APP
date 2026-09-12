@@ -244,7 +244,7 @@ async def websocket_transcribe(websocket: WebSocket):
             transcript_listener_task(),
         )
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         logger.info("[WS] Client disconnected before session start.")
     except ValueError as e:
         # API key not set

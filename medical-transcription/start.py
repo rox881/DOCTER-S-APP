@@ -48,8 +48,8 @@ def check_dependencies():
         ("uvicorn", "Uvicorn"),
         ("websockets", "WebSockets"),
         ("numpy", "NumPy"),
-        ("torch", "PyTorch"),
-        ("faster_whisper", "Faster-Whisper"),
+        ("deepgram", "Deepgram SDK"),
+        ("dotenv", "python-dotenv"),
     ]
     missing = []
     for module_name, display_name in required:
@@ -67,22 +67,28 @@ def check_dependencies():
     return True
 
 
-def check_models():
-    """Verify local models exist in models/ directory."""
-    models_dir = BASE_DIR / "models"
-    whisper_dir = models_dir / "whisper"
-    silero_file = models_dir / "silero-vad" / "silero_vad.jit"
+def check_api_key():
+    """Verify Deepgram API key is configured."""
+    from pathlib import Path
+    env_file = BASE_DIR / ".env"
 
-    has_whisper = whisper_dir.exists() and any(whisper_dir.iterdir()) if whisper_dir.exists() else False
-    has_silero = silero_file.exists() and silero_file.stat().st_size > 100_000
+    api_key = os.getenv("DEEPGRAM_API_KEY", "")
 
-    if has_whisper and has_silero:
-        print("[OK] Local models verified for 100% offline operation.")
+    # Try loading from .env if not already in environment
+    if not api_key and env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("DEEPGRAM_API_KEY="):
+                    api_key = line.split("=", 1)[1].strip()
+                    break
+
+    if api_key and api_key != "your_deepgram_api_key_here":
+        print("[OK] Deepgram API key found.")
         return True
     else:
-        print("[NOTICE] Models not found in local models/ directory.")
-        print("To download models once for complete offline execution, run:")
-        print("    python setup_models.py")
+        print("[MISSING] DEEPGRAM_API_KEY not set.")
+        print("  → Copy .env.example to .env and set your key.")
         return False
 
 
@@ -92,12 +98,11 @@ def start_server(host: str = "127.0.0.1", port: int = 8000, no_browser: bool = F
 
     url = f"http://{host}:{port}"
     print("\n" + "=" * 65)
-    print(" Medical Consultation — Live Offline Transcription System")
+    print(" Medical Consultation — Live Transcription (Deepgram Cloud)")
     print("=" * 65)
     print(f" Server running at : {url}")
-    print(f" Inference Device  : Local CPU (No cloud API / No data leaves PC)")
-    print(f" VAD Engine        : Silero VAD (offline)")
-    print(f" ASR Engine        : Faster-Whisper CPU (INT8)")
+    print(f" STT Engine        : Deepgram Cloud ({os.getenv('DEEPGRAM_MODEL', 'nova-2-medical')})")
+    print(f" Mode              : Real-time streaming WebSocket")
     print(" Press CTRL+C to stop.")
     print("=" * 65 + "\n")
 
@@ -133,10 +138,10 @@ def main():
     py_ok = check_python()
     cpu_ok = check_cpu()
     deps_ok = check_dependencies()
-    models_ok = check_models()
+    key_ok = check_api_key()
 
     if args.check_only:
-        all_ok = py_ok and cpu_ok and deps_ok
+        all_ok = py_ok and cpu_ok and deps_ok and key_ok
         print(f"\n[VERIFICATION] Environment check {'PASSED' if all_ok else 'FAILED'}.")
         sys.exit(0 if all_ok else 1)
 
