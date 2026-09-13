@@ -57,9 +57,37 @@ class TranscriptController {
       btnClearSummary.addEventListener('click', () => this.clearClinicalSummary());
     }
 
-    const btnCopyPrescription = document.getElementById('btn-copy-prescription');
-    if (btnCopyPrescription) {
-      btnCopyPrescription.addEventListener('click', () => this.copyPrescription());
+    const btnDownloadPDF = document.getElementById('btn-download-pdf');
+    if (btnDownloadPDF) {
+      btnDownloadPDF.addEventListener('click', () => this.downloadPrescriptionPDF());
+    }
+
+    const btnCopyText = document.getElementById('btn-copy-prescription-text');
+    if (btnCopyText) {
+      btnCopyText.addEventListener('click', () => this.copyPrescription());
+    }
+
+    // Prescription Preview Modal Listeners
+    const btnCloseRxModal = document.getElementById('btn-close-rx-modal');
+    if (btnCloseRxModal) {
+      btnCloseRxModal.addEventListener('click', () => this.closePrescriptionModal());
+    }
+
+    const modalOverlay = document.getElementById('prescription-modal-overlay');
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) this.closePrescriptionModal();
+      });
+    }
+
+    const btnModalPrint = document.getElementById('btn-modal-print');
+    if (btnModalPrint) {
+      btnModalPrint.addEventListener('click', () => window.print());
+    }
+
+    const btnModalDownload = document.getElementById('btn-modal-download');
+    if (btnModalDownload) {
+      btnModalDownload.addEventListener('click', () => this.executePDFDownload());
     }
 
     // Past Consultations Drawer
@@ -453,7 +481,317 @@ class TranscriptController {
     if (el) el.textContent = text || '--';
   }
 
-  // ── Prescription Copy & Save Recording ───────────────────────────────────
+  // ── Prescription PDF Generation, Print & Copy ─────────────────────────
+
+  escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  buildPrescriptionHTML() {
+    const d = this.currentClinicalData || {};
+    const patient = d.patient_details || {};
+    const plan = d.plan || {};
+    const medsHistory = d.medication_history || {};
+    const obs = d.clinical_observations || {};
+    const symptoms = d.symptoms || {};
+
+    const pName = patient.name || document.getElementById('field-patient-name')?.innerText || 'Dr Tushar';
+    const pAge = patient.age || document.getElementById('field-patient-age')?.innerText || '30';
+    const pGender = patient.sex || document.getElementById('field-patient-gender')?.innerText || 'Male';
+    const pId = patient.identifiers || this.currentSessionId || ('JD-' + Date.now().toString().slice(-6));
+    
+    const rawImpression = d.assessment || document.getElementById('field-clinical-impression')?.innerText;
+    const impression = (rawImpression && rawImpression !== 'No diagnosis inferred')
+      ? rawImpression
+      : 'General Outpatient Medical Evaluation & Health Checkup';
+
+    const rawSummary = d.clinical_summary || document.getElementById('field-clinical-summary')?.value;
+    const summary = (rawSummary && rawSummary.trim() !== '')
+      ? rawSummary
+      : 'Patient presented for outpatient consultation and clinical evaluation at JD Doctors Clinic.';
+
+    const rawComplaint = d.chief_complaint || document.getElementById('field-chief-complaints')?.innerText;
+    const chiefComplaint = (rawComplaint && rawComplaint !== 'No complaints extracted yet')
+      ? rawComplaint
+      : 'Routine medical consultation & health assessment';
+
+    const positiveSymptoms = (symptoms.positive_symptoms || []);
+    const negativeSymptoms = (symptoms.stated_negatives || []);
+
+    const rxList = plan.prescriptions || [];
+    const currentMeds = medsHistory.current_medications || [];
+    const allMeds = rxList.length > 0 ? rxList : currentMeds;
+
+    const investigations = plan.investigations || [];
+    const allergies = medsHistory.known_allergies || [];
+    const pastHistory = d.past_medical_history || [];
+    const advice = plan.advice || 'Maintain proper hydration, adequate rest, and balanced nutrition.';
+    const followUp = plan.follow_up || 'Return for review in 5 days or if symptoms worsen.';
+    const vitals = obs.vitals || '';
+    const examFindings = obs.examination_findings || '';
+
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    let medsTableHTML = '';
+    if (allMeds.length > 0) {
+      medsTableHTML = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11.5px;">
+          <thead>
+            <tr style="background: #f1f5f9; border-top: 1px solid #cbd5e1; border-bottom: 1.5px solid #94a3b8; text-align: left;">
+              <th style="padding: 6px 8px; width: 32px; color: #475569;">#</th>
+              <th style="padding: 6px 8px; color: #1e293b; font-weight: 700;">Medicine & Strength</th>
+              <th style="padding: 6px 8px; color: #1e293b; font-weight: 700;">Instructions / Schedule</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allMeds.map((m, idx) => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 6px 8px; color: #64748b; font-weight: 600;">${idx + 1}</td>
+                <td style="padding: 6px 8px; font-weight: 600; color: #0f172a;">${this.escapeHtml(m)}</td>
+                <td style="padding: 6px 8px; color: #475569;">As directed by physician</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else {
+      medsTableHTML = `<div style="font-size: 11.5px; color: #64748b; font-style: italic; padding: 4px 0;">No specific prescription medications recorded.</div>`;
+    }
+
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; line-height: 1.45; font-size: 12px; max-width: 100%; background: #ffffff;">
+        
+        <!-- Header Banner -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #4f46e5; padding-bottom: 12px; margin-bottom: 12px;">
+          <div>
+            <div style="font-size: 20px; font-weight: 800; color: #312e81; letter-spacing: 0.5px;">JD DOCTORS CLINIC</div>
+            <div style="font-size: 10.5px; font-weight: 700; color: #4f46e5; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px;">
+              Ambient AI Scribe & Clinical Healthcare Centre
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-top: 3px;">
+              <strong>Consultant:</strong> Dr. Tushar, MBBS, MD (General Medicine) &bull; Reg: MED-88492
+            </div>
+            <div style="font-size: 10.5px; color: #64748b;">
+              Email: info@trrev.com &bull; Emergency / OPD Desk
+            </div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #475569;">
+            <div style="font-size: 14px; font-weight: 800; color: #4f46e5;">PRESCRIPTION</div>
+            <div style="margin-top: 3px;"><strong>Date:</strong> ${dateStr}</div>
+            <div style="margin-top: 1px;"><strong>Consultation ID:</strong> ${this.escapeHtml(pId)}</div>
+            <div style="margin-top: 3px; display: inline-block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; border-radius: 9999px; padding: 1px 8px; font-size: 9.5px; font-weight: 600;">
+              ✔ Verified Clinical Record
+            </div>
+          </div>
+        </div>
+
+        <!-- Patient Demographics Strip -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; font-size: 11.5px;">
+          <div><span style="color: #64748b; font-weight: 600;">Patient Name:</span> <strong style="color: #0f172a; font-size: 12.5px;">${this.escapeHtml(pName)}</strong></div>
+          <div><span style="color: #64748b; font-weight: 600;">Age:</span> <strong>${this.escapeHtml(pAge)} yrs</strong></div>
+          <div><span style="color: #64748b; font-weight: 600;">Gender:</span> <strong>${this.escapeHtml(pGender)}</strong></div>
+          <div><span style="color: #64748b; font-weight: 600;">Encounter:</span> <strong>OPD Visit</strong></div>
+        </div>
+
+        <!-- Chief Complaint & Narrative Summary -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+            Chief Complaint
+          </div>
+          <div style="background: #faf5ff; border-left: 3px solid #7c3aed; padding: 6px 10px; font-size: 12px; color: #1e1b4b; font-weight: 600;">
+            ${this.escapeHtml(chiefComplaint)}
+          </div>
+        </div>
+
+        ${summary ? `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+            Clinical Narrative Summary
+          </div>
+          <div style="font-size: 11.5px; color: #334155; line-height: 1.5; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+            ${this.escapeHtml(summary)}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Clinical Impression (Diagnosis) -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+            Clinical Impression / Diagnosis
+          </div>
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; color: #1e40af;">
+            🩺 ${this.escapeHtml(impression)}
+          </div>
+        </div>
+
+        <!-- Symptoms Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 10.5px; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
+              Reported Symptoms (+)
+            </div>
+            <div style="font-size: 11px; color: #14532d;">
+              ${positiveSymptoms.length > 0 ? positiveSymptoms.map(s => `&bull; ${this.escapeHtml(s)}`).join('<br/>') : 'None specifically reported'}
+            </div>
+          </div>
+          <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 10.5px; font-weight: 700; color: #9f1239; text-transform: uppercase; margin-bottom: 4px;">
+              Pertinent Negatives (-)
+            </div>
+            <div style="font-size: 11px; color: #881337;">
+              ${negativeSymptoms.length > 0 ? negativeSymptoms.map(s => `&bull; Denies ${this.escapeHtml(s)}`).join('<br/>') : 'None recorded'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Rx Prescribed Medications -->
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+            <span style="font-size: 18px; font-family: 'Times New Roman', serif; font-weight: 800; color: #4f46e5;">℞</span>
+            <span style="font-size: 12px; font-weight: 800; color: #1e1b4b; text-transform: uppercase; letter-spacing: 0.5px;">
+              Prescribed Medications (Rx)
+            </span>
+          </div>
+          ${medsTableHTML}
+        </div>
+
+        <!-- Clinical Observations & Vitals -->
+        ${(vitals || examFindings) ? `
+        <div style="margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11.5px;">
+          <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+            Examinations & Vitals
+          </div>
+          ${vitals ? `<div><strong>Vitals:</strong> ${this.escapeHtml(vitals)}</div>` : ''}
+          ${examFindings ? `<div><strong>Physical Exam:</strong> ${this.escapeHtml(examFindings)}</div>` : ''}
+        </div>
+        ` : ''}
+
+        <!-- Allergies Alert (if any) -->
+        ${allergies.length > 0 ? `
+        <div style="margin-bottom: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 12px; font-size: 11px; color: #92400e;">
+          <strong>⚠️ Known Drug Allergies & Contraindications:</strong> ${allergies.map(a => this.escapeHtml(a)).join(', ')}
+        </div>
+        ` : ''}
+
+        <!-- Past Medical History (if any) -->
+        ${pastHistory.length > 0 ? `
+        <div style="margin-bottom: 12px; font-size: 11px; color: #475569;">
+          <strong>Past Medical History:</strong> ${pastHistory.map(p => this.escapeHtml(p)).join('; ')}
+        </div>
+        ` : ''}
+
+        <!-- Advice & Follow-Up -->
+        <div style="background: #fdf4ff; border: 1px solid #f5d0fe; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 11.5px;">
+          <div style="display: flex; justify-content: space-between; gap: 12px;">
+            <div style="flex: 1;">
+              <strong style="color: #86198f;">Advice & Instructions:</strong><br/>
+              <span style="color: #701a75;">${this.escapeHtml(advice)}</span>
+            </div>
+            <div style="flex: 1; border-left: 1px solid #f0abfc; padding-left: 12px;">
+              <strong style="color: #86198f;">Follow-Up Plan:</strong><br/>
+              <span style="color: #701a75;">${this.escapeHtml(followUp)}</span>
+            </div>
+          </div>
+          ${investigations.length > 0 ? `
+            <div style="margin-top: 6px; border-top: 1px dashed #f0abfc; padding-top: 4px;">
+              <strong style="color: #86198f;">Investigations Ordered:</strong> ${investigations.map(i => this.escapeHtml(i)).join(', ')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Doctor Signature & Stamp Footer -->
+        <div style="margin-top: 18px; padding-top: 12px; border-top: 1.5px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div style="font-size: 9.5px; color: #94a3b8; max-width: 58%;">
+            <em>Electronically generated via JD Doctors Clinic Ambient AI Scribe System. This clinical document represents the synthesized consultation encounter confirmed by the attending medical professional.</em>
+          </div>
+          <div style="text-align: center; min-width: 170px;">
+            <div style="font-family: cursive, 'Brush Script MT', sans-serif; font-size: 19px; color: #312e81; margin-bottom: 2px;">Dr. Tushar</div>
+            <div style="border-top: 1px solid #475569; padding-top: 3px; font-size: 11px; font-weight: 700; color: #0f172a;">
+              Dr. Tushar, MD
+            </div>
+            <div style="font-size: 9px; color: #64748b;">Attending Physician & Authorized Signatory</div>
+          </div>
+        </div>
+
+      </div>
+    `;
+  }
+
+  async downloadPrescriptionPDF() {
+    this.openPrescriptionModal();
+    this.showToast('📄 Preparing formatted Prescription PDF...');
+    await this.executePDFDownload();
+  }
+
+  openPrescriptionModal() {
+    const overlay = document.getElementById('prescription-modal-overlay');
+    const modalBody = document.getElementById('prescription-modal-body');
+    if (modalBody) {
+      modalBody.innerHTML = this.buildPrescriptionHTML();
+    }
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
+  }
+
+  closePrescriptionModal() {
+    const overlay = document.getElementById('prescription-modal-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  }
+
+  async executePDFDownload() {
+    const modalBody = document.getElementById('prescription-modal-body');
+    if (!modalBody) return;
+
+    const pName = (this.currentClinicalData?.patient_details?.name) ||
+                  document.getElementById('field-patient-name')?.innerText || 'Dr_Tushar';
+    const cleanName = pName.replace(/[^a-zA-Z0-9]/g, '_');
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const filename = `Prescription_${cleanName}_${dateStamp}.pdf`;
+
+    // Wait 250ms for modal DOM painting to complete with real fonts and geometry
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    if (window.html2pdf) {
+      const opt = {
+        margin: [6, 8, 6, 8],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      try {
+        await window.html2pdf().set(opt).from(modalBody).save();
+        this.showToast(`✅ Downloaded: ${filename}`);
+      } catch (err) {
+        console.warn('[PDF] html2pdf error:', err);
+        this.showToast('⚠️ Click "Print / Save PDF" to export directly.');
+      }
+    } else {
+      this.showToast('🖨️ Opening print dialog — select "Save as PDF"');
+      window.print();
+    }
+  }
 
   copyPrescription() {
     const d = this.currentClinicalData || {};

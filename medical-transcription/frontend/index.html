@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Medical Consultation — Live Ambient Transcription & Clinical EHR</title>
   <link rel="stylesheet" href="/css/styles.css" />
+  <!-- Client-side PDF Generation Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -222,10 +224,15 @@
 
         </div>
 
-        <!-- Right Panel Action Button -->
-        <button id="btn-copy-prescription" class="btn-purple-action">
-          Copy to Prescription
-        </button>
+        <!-- Right Panel Action Button: Download Formatted Prescription PDF -->
+        <div class="prescription-actions-container">
+          <button id="btn-download-pdf" class="btn-purple-action" title="Download official formatted medical prescription in PDF format">
+            📄 Download Prescription (PDF)
+          </button>
+          <button id="btn-copy-prescription-text" class="btn-copy-text-subtle" title="Copy clinical encounter as plain text">
+            📋 Copy Plain Text
+          </button>
+        </div>
 
       </section>
 
@@ -254,6 +261,29 @@
       <div class="drawer-loading">Loading consultation records...</div>
     </div>
   </aside>
+
+  <!-- Prescription Preview & PDF Generation Modal -->
+  <div id="prescription-modal-overlay" class="prescription-modal-overlay" style="display: none;">
+    <div class="prescription-modal-dialog">
+      <div class="prescription-modal-header">
+        <div class="modal-header-title">
+          <span>🩺</span> Official Medical Prescription (PDF Preview)
+        </div>
+        <div class="modal-header-actions">
+          <button id="btn-modal-print" class="pill-btn pill-purple pill-btn-sm" title="Print or save as high-resolution PDF">
+            🖨️ Print / Save PDF
+          </button>
+          <button id="btn-modal-download" class="pill-btn pill-white-green pill-btn-sm" title="Download PDF file">
+            📥 Download PDF
+          </button>
+          <button id="btn-close-rx-modal" class="btn-close-drawer" title="Close preview">✕</button>
+        </div>
+      </div>
+      <div id="prescription-modal-body" class="prescription-modal-body">
+        <!-- Live rendered prescription will be injected here -->
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification Alert -->
   <div id="toast-notification" class="toast-notification"></div>
