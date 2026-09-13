@@ -1,4 +1,4 @@
-# 🩺 JD Doctors Clinic — Live Ambient AI Medical Scribe & Clinical EHR
+# 🩺Doctors Clinic — Live Ambient AI Medical Scribe & Clinical EHR
 
 An ambient AI medical scribe that listens to natural doctor-patient consultations via the browser microphone, transcribes speech in real time using **Deepgram Nova-2 Medical STT**, extracts 9 standardized clinical EHR field groups with **Groq Cloud LLMs (`openai/gpt-oss-20b`)**, and generates 1-click **A4 Prescription PDFs** with SQLite session persistence.
 
